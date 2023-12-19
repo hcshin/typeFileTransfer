@@ -4,14 +4,20 @@ import click
 import sys
 import base64
 import logging
+import os
 from setup_logger import setup_logger
 
 LOGGERNAME = 'typeFileTransfer_logger'
 
-def simulateTyping(text: str) -> None:
+def simulateTyping(text: str, inter_char_delay: float) -> None:
     logger = logging.getLogger(LOGGERNAME)
+
+    logger.debug('checking inter_char_delay > 0')
+    assert inter_char_delay > 0
+    logger.debug('inter_char_delay > 0 proceeding')
+
     logger.debug('typing simulation start')
-    pyautogui.typewrite(text)
+    pyautogui.write(text, interval=inter_char_delay)
     logger.debug('typing simulation end')
 
 def printCountDown(time2wait: int) -> None:
@@ -53,11 +59,25 @@ def getBase64Chunk(filepath: str, text_chunk_size: int = -1) -> str:
     help='logging level for the logger'
 )
 @click.option(
-    '--delay-in-seconds',
+    '--pre-typing-delay',
     type=click.INT,
     default=5,
     show_default=True,
     help='delay in seconds before actual typing simulation'
+)
+@click.option(
+    '--inter-char-delay',
+    type=click.FLOAT,
+    default=0.005,
+    show_default=True,
+    help='delay inserted between each typing of a letter'
+)
+@click.option(
+    '--inter-echo-delay',
+    type=click.FLOAT,
+    default=0.1,
+    show_default=True,
+    help='delay inserted between each \'echo\' command'
 )
 @click.option(
     '--text-chunk-size',
@@ -73,19 +93,31 @@ def getBase64Chunk(filepath: str, text_chunk_size: int = -1) -> str:
 )
 def main(
     logging_level,
-    delay_in_seconds,
+    pre_typing_delay,
+    inter_char_delay,
+    inter_echo_delay,
     text_chunk_size,
     filepath
 ):
     logger = setup_logger(LOGGERNAME, logging_level)
 
-    print(f'Typing simulation will start in {delay_in_seconds} seconds.\n'
-          'Move cursor to the shell to input text, now!')
-    printCountDown(delay_in_seconds)
+    logger.debug('checking inter_echo_delay > 0')
+    assert inter_echo_delay > 0
+    logger.debug('inter_echo_delay > 0. proceeding')
 
+
+    print(f'Typing simulation will start in {pre_typing_delay} seconds.\n'
+          'Move cursor to the shell to input text, now!')
+    printCountDown(pre_typing_delay)
+
+    fileSizeInBytes = os.stat(filepath).st_size
+    numChunk = 0
     for base64Chunk in getBase64Chunk(filepath, text_chunk_size=text_chunk_size):
-        #print(base64Chunk)
-        simulateTyping('echo \'' + base64Chunk + '\'\r')
+        simulateTyping('echo -n \'' + base64Chunk + f'\' >> {os.path.basename(filepath)}.base64\r', inter_char_delay)
+        numChunk += 1
+        sys.stdout.write(f'Progress: {numChunk*(text_chunk_size*9):10d}/{fileSizeInBytes}\r')
+        time.sleep(inter_echo_delay)
+    print('')
 
 if __name__ == '__main__':
     main()
