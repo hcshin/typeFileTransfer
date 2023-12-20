@@ -117,7 +117,8 @@ def main(
         numChunk += 1
         sys.stdout.write(f'Progress: {numChunk*(text_chunk_size*9):10d}/{fileSizeInBytes}\r')
         time.sleep(inter_echo_delay)
-    print('')
+    simulateTyping(f'echo \'\' >> {os.path.basename(filepath)}.base64\r', inter_echo_delay)
+    sys.stdout.write(f'Progress: {fileSizeInBytes:10d}/{fileSizeInBytes}\n')
 
 if __name__ == '__main__':
     main()
